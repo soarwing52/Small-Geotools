@@ -1,0 +1,90 @@
+# -*- coding: cp1252 -*-
+from arcgis.gis import GIS
+import pandas as pd
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import schedule
+import time
+
+def mail():
+    global checked
+    MY_ADDRESS = 'hung@ge-komm.de'
+    PASSWORD = '********'
+    TIME_FREQUENCY = '02:10:00'
+    url = "https://www.arcgis.com"
+    user = '****@***.com'
+    password = '******'
+    my_gis = GIS(url, user, password)
+    survey = my_gis.content.get('<item_id_here>')
+
+
+    for lyr in survey.layers:
+        df = lyr.query().sdf
+        try:
+            print('checked',checked)
+            df_checked = df.loc[df['CreationDate'] > checked]
+        except NameError:
+            checkpoint = pd.Timestamp.now()-pd.Timedelta(TIME_FREQUENCY)
+            print(checkpoint)
+            df_checked = df.loc[df['CreationDate'] > checkpoint]
+
+        email_list = df_checked['Email'].tolist()
+        print(email_list)
+
+
+        with smtplib.SMTP(host='smtp-mail.outlook.com', port=587) as s:
+            s.starttls()
+            s.login(MY_ADDRESS, PASSWORD)
+            for i in range(0, len(email_list)):
+                sender_email = MY_ADDRESS
+                reciever_email = email_list[i]
+                name = df_checked['Name'].iloc[i]
+                num = df_checked['Wegenummer'].iloc[i]
+                comment = df_checked['Kommentar'].iloc[i]
+
+                message = MIMEMultipart()
+                message["Subject"] = "Vielen Dank für Ihren Kommentar"
+                message["From"] = sender_email
+                message["To"] = reciever_email
+
+                html_content = """\
+<html>
+<body>
+<p>Vielen Dank für Ihren Kommentar.</p>
+<p>Dieser ist bei uns eingegangen.</p>
+<p>Sie erhalten diese Nachricht als Bestätigung für den Eingang Ihres Kommentares.</p> <p> </p> <p><a href="https://wirtschaftswegekonzept.de/" target="_blank">wirtschaftswegekonzept.de</a> ist ein Produkt der</p> <p><a href="https://ge-komm.de/" target="_blank">Ge-Komm GmbH</a></p> <p>Gesellschaft für kommunale Infrastruktur</p> <p>Bismarckstraße 15</p>
+<p>49324 Melle</p>
+<p>Telefon: 05422 98151-60</p>
+<p>Fax: 05422 98151-69</p>
+<p>E-Mail: <a href="mailto:info@ge-komm.de" target="_blank">info@ge-komm.de</a></p>
+<p> </p>
+<p><strong>Ihre Nachricht:</strong></p>
+<p>Name: {} </p>
+<p>E-Mail: {}</p>
+<p>Bezeichnung/Wegenummer/Beschreibung:</p>
+<p> {}</p>
+<p>Ihre Kommentar:</p>
+<p>{}</p>
+  </body>
+</html>
+        """.format(name, reciever_email, num, comment)
+
+                part = MIMEText(html_content,'html')
+                message.attach(part)
+                s.sendmail(sender_email, reciever_email, message.as_string())
+        print('Geschickt')
+
+
+    checked = pd.Timestamp.now()-pd.Timedelta('2:01:00')
+
+
+
+if __name__ == '__main__':
+    print('start')
+    mail()
+    schedule.every(10).minutes.do(mail)
+    while True:
+        schedule.run_pending()
+        time.sleep(10)
+
