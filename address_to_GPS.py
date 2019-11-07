@@ -7,7 +7,7 @@ import time
 def get_latitude_longtitude(address):
     # decode url
     address = urllib.quote(address)
-    url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + address + "&key=AIzaSyD3cKg8RSMJEvIvCEwB6N55IiE1IkeysUw"
+    url = "https://maps.googleapis.com/maps/api/geocode/json?address=" + address + "&key=<Google API Key Here>"
 
     while True:
         res = requests.get(url)
